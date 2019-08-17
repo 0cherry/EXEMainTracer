@@ -93,7 +93,7 @@ VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
 		memcpy(operand, token, strlen(token)+1);
 	}
 	
-	//if (!op.compare("call")) {
+	//	arrange call map & stack 
 	if (!strncmp(mnemonic, "call", 5)) {
 		*trace_out << ";";
 		*trace_out << dec << address + insSize << ";";
