@@ -16,13 +16,15 @@
 
 using namespace std;
 int insCount = 0;
+int next_address = 0;
 ostream *trace_out = &cerr;
+ostream *trace_out_for_graph = &cerr;
 ostream *alignment_out = &cerr;
 map<int, int> call_map;
 stack<int> call_stack;
+stack<int> return_address_stack;
 ADDRINT main_txt_saddr;
 ADDRINT main_img;
-bool start = false;
 INT32 Usage() {
 
 	cerr << "This tool prints out the number of dynamically executed " << endl <<
@@ -35,32 +37,33 @@ INT32 Usage() {
 
 //VOID dumpInstruction(ADDRINT address, INS ins) {
 VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
+	// trace_out header "ta,dec_addr,binary_code,instruction,stack_depth,return_address,block_leader"
 	// string *dis = new string(INS_Disassemble(ins));
 	// int insSize = INS_Size(ins);
 	// string mnemonic = INS_Mnemonic(ins);
 	// cerr << dis << endl;
 
-	//    ADDRINT saddr= address -main_img;
+	//    ADDRINT saddr= address -`;
 	//	write 'ta'
-	*trace_out << dec << insCount << ";";
+	*trace_out << dec << insCount << ",";
 	*alignment_out << dec << insCount << ",";
 	//	write 'decimal address'
-	*trace_out << dec << address << ";";
+	*trace_out << dec << address << ",";
 	*alignment_out << dec << address << ",";
 	//	write 'hex address'
-	*trace_out << hex << address << ";";
+	//*trace_out << hex << address << ";";
 	*alignment_out << hex << address << ",";
-	//	write 'byte code'
+	//	write 'binary code'
 	for (int i = 0; i < (int)insSize; i++)
 	{
-		*trace_out << "\\x" << setfill('0') << setw(2) << (((unsigned int) *(unsigned char*)(address + i)) & 0xFF);
-		*alignment_out << "\\x" << setfill('0') << setw(2) << (((unsigned int) *(unsigned char*)(address + i)) & 0xFF);
+		*trace_out << hex << "\\x" << setfill('0') << setw(2) << (((unsigned int) *(unsigned char*)(address + i)) & 0xFF);
+		*alignment_out << hex << "\\x" << setfill('0') << setw(2) << (((unsigned int) *(unsigned char*)(address + i)) & 0xFF);
 		// cerr << "\\x" << setfill('0') << setw(2) << (((unsigned int) *(unsigned char*)(address + i)) & 0xFF);
 	}
-	*trace_out << ";";
+	*trace_out << ",";
 	*alignment_out << ",";
 	//	write 'instruction'
-	*trace_out << *dis;
+	*trace_out << '"' << *dis << '"' << ",";
 	// cerr << hex << endl << dis << endl;
 
 	//	set alignment & write 'instruction'
@@ -71,6 +74,7 @@ VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
 		while (1) {
 			int call_stack_top = call_stack.top();
 			call_stack.pop();
+			return_address_stack.pop();
 			if (call_stack_top == related_address) {
 				break;
 			}
@@ -80,8 +84,18 @@ VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
 		*alignment_out << ",";
 	}
 	*alignment_out << '"' << *dis << '"';
+	//  write 'stack depth'
+	*trace_out << call_stack.size() << ",";
 
 	//	write 'return address'
+	if (return_address_stack.empty()) {
+		*trace_out << 0 << ",";
+	}
+	else {
+		*trace_out << dec << return_address_stack.top() << ",";
+	}
+
+	//  split instruction to mnemonic & operand
 	char *instruction = const_cast<char*>(dis->c_str());
 	char *token = strtok(instruction, " ");
 	char *mnemonic = (char *)malloc(sizeof(char)*strlen(token) + 1);
@@ -95,23 +109,33 @@ VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
 	
 	//	arrange call map & stack 
 	if (!strncmp(mnemonic, "call", 5)) {
-		*trace_out << ";";
-		*trace_out << dec << address + insSize << ";";
-		*trace_out << hex << address + insSize;
+		// *trace_out << ";";
+		// *trace_out << dec << address + insSize << ";";
+		// *trace_out << hex << address + insSize;
 		call_map.insert(make_pair(address + insSize, insCount));
 		call_stack.push(insCount);
+		return_address_stack.push(address + insSize);
 	}
 
 	//	write 'caller address'
 	if (is_return) {
-		*trace_out << ";";
-		*trace_out << dec << related_address << ";";
-		*trace_out << hex << related_address;
+		// *trace_out << ";";
+		// *trace_out << dec << related_address << ";";
+		// *trace_out << hex << related_address;
+	}
+
+	// write 'block_reader'
+	if (!(next_address - address)) {
+		*trace_out << FALSE;
+	}
+	else {
+		*trace_out << TRUE;
 	}
 
 	*trace_out << endl;
 	*alignment_out << endl;
 	insCount++;
+	next_address = address + insSize;
 }
 
 
@@ -191,7 +215,10 @@ int main(int argc, char *argv[])
 	string call_trace_name = base_file_name;
 	string alignment_trace_name = bfn2_ptr;
 
-	if (!call_trace_name.empty()) { trace_out = new std::ofstream(call_trace_name.c_str()); }
+	if (!call_trace_name.empty()) { 
+		trace_out = new std::ofstream(call_trace_name.c_str()); 
+		*trace_out << "ta,dec_addr,binary_code,instruction,stack_depth,return_address,block_leader" << endl;
+	}
 	if (!alignment_trace_name.empty()) { alignment_out = new std::ofstream(alignment_trace_name.c_str()); }
 
 	PIN_InitSymbols();
