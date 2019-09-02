@@ -37,7 +37,7 @@ INT32 Usage() {
 
 //VOID dumpInstruction(ADDRINT address, INS ins) {
 VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
-	// trace_out header "ta,dec_addr,binary_code,instruction,stack_depth,return_address,block_leader"
+	// trace_out header "ta,dec_addr,binary_code,instruction,stack_depth,return_address,block_leader,call"
 	// string *dis = new string(INS_Disassemble(ins));
 	// int insSize = INS_Size(ins);
 	// string mnemonic = INS_Mnemonic(ins);
@@ -112,9 +112,13 @@ VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
 		// *trace_out << ";";
 		// *trace_out << dec << address + insSize << ";";
 		// *trace_out << hex << address + insSize;
+		*trace_out << 1 << ",";
 		call_map.insert(make_pair(address + insSize, insCount));
 		call_stack.push(insCount);
 		return_address_stack.push(address + insSize);
+	}
+	else {
+		*trace_out << 0 << ",";
 	}
 
 	//	write 'caller address'
@@ -217,7 +221,7 @@ int main(int argc, char *argv[])
 
 	if (!call_trace_name.empty()) { 
 		trace_out = new std::ofstream(call_trace_name.c_str()); 
-		*trace_out << "ta,dec_addr,binary_code,instruction,stack_depth,return_address,block_leader" << endl;
+		*trace_out << "ta,dec_addr,binary_code,instruction,stack_depth,return_address,block_leader,call" << endl;
 	}
 	if (!alignment_trace_name.empty()) { alignment_out = new std::ofstream(alignment_trace_name.c_str()); }
 
