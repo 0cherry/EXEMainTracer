@@ -97,7 +97,9 @@ VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
 
 	//  split instruction to mnemonic & operand
 	char *instruction = const_cast<char*>(dis->c_str());
-	char *token = strtok(instruction, " ");
+	char *instruction_copy = (char *)malloc(sizeof(char)*strlen(instruction) + 1);
+	memcpy(instruction_copy, instruction, strlen(instruction) + 1);
+	char *token = strtok(instruction_copy, " ");
 	char *mnemonic = (char *)malloc(sizeof(char)*strlen(token) + 1);
 	memcpy(mnemonic, token, strlen(token)+1);
 	token = strtok(NULL, "");
@@ -129,6 +131,11 @@ VOID dumpInstruction(ADDRINT address, UINT32 insSize, const string *dis) {
 	}
 
 	// write 'block_reader'
+	/*
+	if (!strncmp(mnemonic, "call", 5)) {
+		*trace_out << TRUE;
+	}
+	*/
 	if (!(next_address - address)) {
 		*trace_out << FALSE;
 	}
@@ -221,7 +228,7 @@ int main(int argc, char *argv[])
 
 	if (!call_trace_name.empty()) { 
 		trace_out = new std::ofstream(call_trace_name.c_str()); 
-		*trace_out << "ta,dec_addr,binary_code,instruction,stack_depth,return_address,block_leader,call" << endl;
+		*trace_out << "ta,dec_addr,binary_code,instruction,stack_depth,return_address,call,block_leader" << endl;
 	}
 	if (!alignment_trace_name.empty()) { alignment_out = new std::ofstream(alignment_trace_name.c_str()); }
 
